@@ -1,0 +1,44 @@
+Raw rows: 4243
+Valid products: 3939
+
+Rows by shop:
+- STC Toys: 2693
+- AVO Blind Box: 508
+- TOP TOY: 304
+- 52TOYS Japan: 139
+- Plastic Empire: 83
+- Toy Tokyo: 83
+- Kidrobot: 57
+- ROS Studio: 56
+- Kiitos Store: 16
+
+Top IP:
+- 原创潮玩: 1682
+- TOP TOY: 743
+- 52TOYS: 332
+- LULU THE PIGGY: 244
+- POP MART: 148
+- DISNEY: 146
+- CRAYON SHIN-CHAN: 138
+- SANRIO: 137
+- LABUBU / THE MONSTERS: 76
+- CRYBABY: 49
+- KIDROBOT: 40
+- FINDING UNICORN: 39
+- HACIPUPU: 36
+- SKULLPANDA: 31
+- MOLLY: 22
+
+Top style:
+- 毛绒挂件: 1537
+- 潮玩盲盒: 803
+- 可爱风: 594
+- 收藏摆件: 479
+- 潮酷街头: 167
+- 暗黑潮酷: 115
+- 治愈系: 96
+- 动漫联名: 64
+- 奇幻童话: 45
+- 食玩生活: 39
+
+Price range CNY: 11.00 - 6879.60
