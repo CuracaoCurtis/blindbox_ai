@@ -1,0 +1,88 @@
+import pandas as pd
+
+
+def sample_dataframe():
+    return pd.DataFrame(
+        [
+            {
+                "id": "molly-a",
+                "name": "Molly Cute Single Box",
+                "price": 180,
+                "image_url": "https://img/a.jpg",
+                "ip": "MOLLY",
+                "style": "可爱风",
+                "description": "cute blind box 来源: https://shop.example.com/molly-series",
+                "shop": "Shop A",
+            },
+            {
+                "id": "molly-hidden",
+                "name": "Molly Cute Hidden",
+                "price": 190,
+                "image_url": "https://img/a2.jpg",
+                "ip": "MOLLY",
+                "style": "可爱风",
+                "description": "hidden cute figure 来源: https://shop.example.com/molly-series",
+                "shop": "Shop A",
+            },
+            {
+                "id": "sanrio-plush",
+                "name": "Sanrio Pink Plush Keychain",
+                "price": 120,
+                "image_url": "https://img/b.jpg",
+                "ip": "SANRIO",
+                "style": "毛绒挂件",
+                "description": "pink plush gift 来源: https://shop.example.com/sanrio-plush",
+                "shop": "Shop B",
+            },
+            {
+                "id": "dark-figure",
+                "name": "Dark Ghost Figure",
+                "price": 100,
+                "image_url": "https://img/c.jpg",
+                "ip": "原创潮玩",
+                "style": "暗黑潮酷",
+                "description": "dark hidden figure 来源: https://shop.example.com/dark",
+                "shop": "Shop C",
+            },
+            {
+                "id": "cute-plush",
+                "name": "Cute Bear Plush Gift",
+                "price": 140,
+                "image_url": "https://img/e.jpg",
+                "ip": "原创潮玩",
+                "style": "毛绒挂件",
+                "description": "cute plush gift 来源: https://shop.example.com/cute-plush",
+                "shop": "Shop E",
+            },
+            {
+                "id": "sanrio-expensive",
+                "name": "Sanrio Collector Figure",
+                "price": 250,
+                "image_url": "https://img/d.jpg",
+                "ip": "SANRIO",
+                "style": "收藏摆件",
+                "description": "collectible gift 来源: https://shop.example.com/sanrio-collector",
+                "shop": "Shop D",
+            },
+            {
+                "id": "sanrio-badge",
+                "name": "Sanrio Trading Badge",
+                "price": 60,
+                "image_url": "https://img/f.jpg",
+                "ip": "SANRIO",
+                "style": "可爱风",
+                "description": "cute trading badge; related blind box marketing 来源: https://shop.example.com/sanrio-badge",
+                "shop": "Shop F",
+            },
+            {
+                "id": "sold-out-plush",
+                "name": "Cute Plush Blind Box - SOLD OUT",
+                "price": 80,
+                "image_url": "https://img/g.jpg",
+                "ip": "原创潮玩",
+                "style": "毛绒挂件",
+                "description": "cute plush blind box 来源: https://shop.example.com/sold-out",
+                "shop": "Shop G",
+            },
+        ]
+    )

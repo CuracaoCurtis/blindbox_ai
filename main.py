@@ -1,109 +1,206 @@
-"""
-主程序：Streamlit 聊天界面
-整合：用户画像（大模型抽取）、RAG 检索（暂用假函数）、大模型推荐解释
-"""
+"""盲盒 AI 智能导购 Streamlit 入口。"""
+from typing import Any, Dict, List
 
 import streamlit as st
-import sys
-import os
 
-# 确保能导入项目内的模块
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from rag.recommender import ProductCatalog
+from shopping_assistant import AI_STATUS_LABELS, ShoppingAssistant
+from user_profile.parser import default_profile, normalize_profile
 
-# ========== 导入真实模块 ==========
-from llm.ollama_client import generate_explanation
-from user_profile.parser import update_profile   # 使用大模型画像模块
 
-# TODO: 等待 RAG 组员完成后，取消下面注释并删除假函数
-# from rag.searcher import search_by_tags
+st.set_page_config(
+    page_title="盲盒 AI 智能导购",
+    page_icon="🎁",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-# ========== 临时假函数（等 RAG 同学替换）==========
-def search_by_tags_fake(profile, top_k=3):
-    """模拟 RAG 检索，返回假商品数据"""
-    fake_items = [
-        {"name": "Molly 星座系列", "price": 89, "image_url": "", "ip": "Molly", "style": "可爱"},
-        {"name": "Skullpanda 森林漫游", "price": 129, "image_url": "", "ip": "Skullpanda", "style": "治愈"},
-        {"name": "Dimoo 太空旅行", "price": 99, "image_url": "", "ip": "Dimoo", "style": "可爱"},
-    ]
-    return fake_items[:top_k]
-# =================================================
 
-# ========== Streamlit 页面配置 ==========
-st.set_page_config(page_title="盲盒AI导购", page_icon="🎁")
-st.title("🎁 盲盒AI智能导购")
-st.caption("告诉我你的喜好，我来帮你挑盲盒～")
+@st.cache_resource
+def get_assistant() -> ShoppingAssistant:
+    return ShoppingAssistant(ProductCatalog())
 
-# ========== 初始化 session_state ==========
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "profile" not in st.session_state:
-    # 画像字段需与 parser.py 中保持一致
-    st.session_state.profile = {
-        "style": None,
-        "ip": None,
-        "min_price": 0,
-        "max_price": 9999,
-        "accept_hidden": False,
-        "purpose": None
-    }
 
-# ========== 显示历史对话 ==========
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.write(msg["content"])
-        # 如果消息包含推荐商品，以卡片形式展示
-        if msg.get("items"):
-            for item in msg["items"]:
-                col1, col2 = st.columns([1, 3])
-                with col1:
-                    if item.get("image_url"):
-                        st.image(item["image_url"], width=80)
-                    else:
-                        st.write("🎴")  # 占位图
-                with col2:
-                    st.write(f"**{item['name']}**  ¥{item['price']}")
+def initialize_state(assistant: ShoppingAssistant) -> None:
+    if "messages" not in st.session_state:
+        st.session_state.messages = [
+            {
+                "role": "assistant",
+                "content": (
+                    "你好，我是盲盒智能导购。告诉我你喜欢的 IP、风格、预算和用途，"
+                    "我会持续记住偏好并推荐商品。推荐后也可以说“比较第一款和第三款”。"
+                ),
+                "items": [],
+            }
+        ]
+    if "profile" not in st.session_state:
+        st.session_state.profile = default_profile()
+    if "last_items" not in st.session_state:
+        st.session_state.last_items = []
+    if "ai_status" not in st.session_state:
+        st.session_state.ai_status = assistant.initial_ai_status
 
-# ========== 聊天输入框 ==========
-user_input = st.chat_input("例如：我喜欢可爱的盲盒，预算200以内，想要隐藏款")
 
-if user_input:
-    # 1. 显示用户消息
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user"):
-        st.write(user_input)
+def process_prompt(prompt: str, assistant: ShoppingAssistant) -> None:
+    text = prompt.strip()
+    if not text:
+        return
 
-    # 2. 更新用户画像（调用大模型抽取模块）
-    new_profile, ask = update_profile(user_input, st.session_state.profile)
-    st.session_state.profile = new_profile
+    st.session_state.messages.append({"role": "user", "content": text, "items": []})
+    result = assistant.process_message(
+        text,
+        st.session_state.profile,
+        st.session_state.last_items,
+    )
+    st.session_state.profile = result["profile"]
+    st.session_state.ai_status = result["ai_status"]
+    if result["intent"] == "reset":
+        st.session_state.last_items = []
+    elif result["items"]:
+        st.session_state.last_items = result["items"]
+    st.session_state.messages.append(
+        {
+            "role": "assistant",
+            "content": result["reply"],
+            "items": result["items"],
+        }
+    )
 
-    # 3. 检索推荐商品（TODO: 替换为真实 RAG 检索）
-    # recommended = search_by_tags(st.session_state.profile, top_k=3)
-    recommended = search_by_tags_fake(st.session_state.profile, top_k=3)
 
-    # 4. 生成回复
-    if ask:
-        reply = ask
-        reply_items = []
-    else:
-        # 调用大模型生成推荐解释
-        explanation = generate_explanation(user_input, st.session_state.profile, recommended)
-        # 组装推荐列表文字
-        items_text = "\n".join([f"{i+1}. {item['name']} - ¥{item['price']}" for i, item in enumerate(recommended)])
-        reply = f"{explanation}\n\n{items_text}"
-        reply_items = recommended
+def display_product_card(product: Dict[str, Any]) -> None:
+    with st.container(border=True):
+        image_col, detail_col = st.columns([1, 3])
+        with image_col:
+            image_url = str(product.get("image_url", ""))
+            if image_url.startswith("http"):
+                st.image(image_url, use_container_width=True)
+            else:
+                st.markdown("<h1 style='text-align:center'>🎁</h1>", unsafe_allow_html=True)
 
-    # 5. 保存并显示助手回复
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": reply,
-        "items": reply_items
-    })
-    with st.chat_message("assistant"):
-        st.write(reply)
-        if reply_items:
-            for item in reply_items:
-                col1, col2 = st.columns([1, 3])
-                with col1:
-                    st.write("🎴")
-                with col2:
-                    st.write(f"**{item['name']}**  ¥{item['price']}")
+        with detail_col:
+            st.markdown("**{}**".format(product.get("name", "")))
+            st.markdown("**¥{:.2f}**".format(float(product.get("price", 0))))
+            tags = [str(product.get("ip", "")), str(product.get("style", ""))]
+            st.caption(" · ".join(tag for tag in tags if tag))
+            if product.get("reason"):
+                st.info(product["reason"])
+            if product.get("shop"):
+                st.caption("来源店铺：{}".format(product["shop"]))
+            product_url = str(product.get("product_url", ""))
+            if product_url.startswith("http"):
+                if hasattr(st, "link_button"):
+                    st.link_button("查看来源商品", product_url)
+                else:
+                    st.markdown("[查看来源商品]({})".format(product_url))
+
+
+def _show_list(label: str, values: List[str], excluded: bool = False) -> None:
+    if not values:
+        return
+    prefix = "排除" if excluded else label
+    st.markdown("**{}：** {}".format(prefix, "、".join(values)))
+
+
+def render_sidebar(assistant: ShoppingAssistant) -> None:
+    profile = normalize_profile(st.session_state.profile)
+    status = st.session_state.ai_status
+
+    with st.sidebar:
+        st.markdown("## 导购状态")
+        if status == "enabled":
+            st.success(AI_STATUS_LABELS[status])
+        elif status == "degraded":
+            st.warning(AI_STATUS_LABELS[status])
+        else:
+            st.info(AI_STATUS_LABELS[status])
+            st.caption("在项目根目录创建 `.env` 并配置 API 后重启即可启用 AI。")
+
+        st.markdown("## 你的偏好画像")
+        _show_list("偏好 IP", profile["preferred_ips"])
+        _show_list("排除 IP", profile["excluded_ips"], excluded=True)
+        _show_list("偏好风格", profile["preferred_styles"])
+        _show_list("排除风格", profile["excluded_styles"], excluded=True)
+        _show_list("关键词", profile["keywords"])
+        _show_list("排除关键词", profile["excluded_keywords"], excluded=True)
+        _show_list("用途", profile["purposes"])
+
+        if profile["min_price"] is not None or profile["max_price"] is not None:
+            low = profile["min_price"] if profile["min_price"] is not None else 0
+            high = profile["max_price"] if profile["max_price"] is not None else "不限"
+            st.markdown("**预算：** ¥{} - ¥{}".format(low, high))
+        if profile["target_price"] is not None:
+            st.markdown("**目标价：** ¥{}".format(profile["target_price"]))
+        if profile["accept_hidden"] is True:
+            st.markdown("**隐藏款：** 接受并偏好")
+        elif profile["accept_hidden"] is False:
+            st.markdown("**隐藏款：** 排除")
+        if not any(
+            profile[field]
+            for field in [
+                "preferred_ips",
+                "excluded_ips",
+                "preferred_styles",
+                "excluded_styles",
+                "keywords",
+                "excluded_keywords",
+                "purposes",
+            ]
+        ) and profile["max_price"] is None:
+            st.caption("尚未记录偏好")
+
+        st.divider()
+        if st.button("重置所有偏好", use_container_width=True):
+            process_prompt("重置偏好", assistant)
+            st.rerun()
+
+        st.markdown("### 商品数据")
+        dataframe = assistant.catalog.dataframe
+        st.metric("商品总数", len(dataframe))
+        st.metric("平均价格", "¥{:.0f}".format(dataframe["price"].mean()))
+
+        st.markdown("### 快速尝试")
+        quick_prompts = [
+            "我喜欢可爱的，预算200以内",
+            "想要 Molly 系列，300元左右",
+            "不要暗黑风，150元内毛绒送礼",
+            "最近压力大，想要治愈系，预算250以内",
+            "我是收藏党，预算500以内，想要隐藏款",
+        ]
+        for prompt in quick_prompts:
+            if st.button(prompt, key="quick_" + prompt, use_container_width=True):
+                process_prompt(prompt, assistant)
+                st.rerun()
+
+
+def render_messages() -> None:
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            if message["role"] == "assistant":
+                st.markdown(message["content"])
+            else:
+                st.write(message["content"])
+            for item in message.get("items") or []:
+                display_product_card(item)
+
+
+def main() -> None:
+    try:
+        assistant = get_assistant()
+    except Exception as exc:
+        st.error("商品数据加载失败：{}".format(exc))
+        st.stop()
+
+    initialize_state(assistant)
+    st.title("🎁 盲盒 AI 智能导购")
+    st.caption("支持多轮偏好、排除条件、预算、智能推荐和上一轮商品对比")
+    render_sidebar(assistant)
+    render_messages()
+
+    user_input = st.chat_input("例如：不要暗黑风，想要三丽鸥毛绒，预算200以内")
+    if user_input:
+        process_prompt(user_input, assistant)
+        st.rerun()
+
+
+if __name__ == "__main__":
+    main()
